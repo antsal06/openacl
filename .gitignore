@@ -1,0 +1,47 @@
+# Secrets / Konfig
+.env
+.env.*
+*.pem
+*.key
+service-account*.json
+credentials*.json
+gcloud/
+.vercel/
+
+# Rohdaten und Videos (nie ins Repo)
+data/
+!data/sessions/.gitkeep
+*.mp4
+*.mov
+*.MOV
+*.mkv
+*.avi
+*.c3d
+*.trc
+*.mot
+*.zip
+*.export.xml
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Modelle / Caches
+models/
+*.onnx
+*.pth
+*.pt
+.cache/
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
