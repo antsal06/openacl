@@ -38,9 +38,15 @@ Ergebnis: rund 40 bis 50 Gangzyklen pro Bein pro Session. Das ist genug zum Mitt
 Datei `data/sessions/YYYY-MM-DD_HHMM/meta.yaml`:
 
 ```yaml
-date: 2026-09-08
-time: "08:30"
+date: 2026-09-05
+time: "19:30"
 post_op_weeks: 26
+subject:                   # ADR-0009; nötig für Meter-Skalierung, Froude-Klasse und Seitenzuordnung
+  height_m: 1.80
+  mass_kg: 75
+  operated_side: R         # L oder R
+  surgery_date: 2026-03-01
+  graft: "STG (Hamstring)"
 location: "Flur Keller"
 shoes: "Laufschuh X"
 pain_now_0_10: 1          # aktueller Schmerz, operiertes Knie

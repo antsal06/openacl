@@ -19,7 +19,7 @@ from openacl.schema import KinematicsResult, Side, sided
 
 from .cycles import GaitCycles, normalize_cycles
 from .deviation import DeviationResult, compute_deviation
-from .events import SIDES, GaitEvents, detect_events
+from .events import KNOWN_STANCE_BIAS_PCT, SIDES, GaitEvents, detect_events
 from .filtering import DEFAULT_CUTOFF_HZ, DEFAULT_MAX_GAP_S, lowpass, lowpass_columns
 from .normband import NormBand
 from .spatiotemporal import Spatiotemporal, compute_spatiotemporal
@@ -193,6 +193,11 @@ def analyze(
     deviation = compute_deviation(cycles, normbands, speed_class=speed_class)
 
     warnings: list[str] = []
+    warnings.append(
+        "stance phase from Zeni-2008 kinematic events is overestimated by about "
+        f"{KNOWN_STANCE_BIAS_PCT:.1f} percentage points vs force plates (Fukuchi 2018 validation); "
+        "side symmetry is unaffected, absolute stance/swing/double-support are not"
+    )
     warnings.extend(events.warnings)
     warnings.extend(cycles.warnings)
     warnings.extend(spatiotemporal.warnings)

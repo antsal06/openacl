@@ -32,10 +32,11 @@ Stand 2026-09-05 (erste Bauwelle, vor Antons erster Aufnahme vorgezogen, weil oh
 - [x] Unsicherheit: MDC-Rechnung (ICC(2,1), SEM, MDC95) und Literatur-Platzhalter; eigene Werte fehlen bis Wiederholungsmessung
 - [x] `sports2d`-Backend, CLI `openacl analyze <video>` (getestet mit Sports2D-Demovideo auf dem M2: lightweight 1,3× Echtzeit, balanced 4×)
 - [x] Tests: 131 (synthetischer Gang mit bekannten Antworten, Parser-Fixtures, Normband-Format)
-- [ ] Test gegen echte Markerdaten (Fukuchi-Zyklen als `KinematicsResult` durch Gait-Core, Standphase und Peaks müssen mit den publizierten Werten übereinstimmen)
-- [ ] Sub-Frame-Genauigkeit der Toe-Off-Erkennung (aktuell ~1 Frame zu früh, ca. 1 % Standphase)
+- [x] Test gegen echte Markerdaten: 12 Fukuchi-Probanden × 3 Geschwindigkeiten gegen Kraftmessplatten (`docs/validation/core_vs_fukuchi.md`). Geschwindigkeit Bias −0,02 m/s, Kadenz −0,3/min, Peak Knie +1,4°. **Standphase +5,5 ± 1,3 Prozentpunkte** (Heel Strike 37 ms zu früh, Toe Off 19 ms zu spät). Als `KNOWN_STANCE_BIAS_PCT` dokumentiert und als Warnung ausgegeben; Symmetrie ist davon unberührt
+- [ ] Ereigniserkennung verbessern: Fersen-Vorwärtsgeschwindigkeit unter Schwelle für Heel Strike, Zehen-Geschwindigkeit über Schwelle für Toe Off (Zeni-Methode 2), Ziel Standphasen-Bias < 2 Prozentpunkte, Nachweis mit `scripts/validate_core_fukuchi.py`
 - [ ] Pixel-zu-Meter-Skalierung für Schrittlänge und Geschwindigkeit (Körpergröße oder Referenzmaß), dann automatische Froude-Klasse
-- [ ] Apple-Health-Export-Loader (ADR-0005)
+- [x] Apple-Health-Export-Loader (`python -m openacl.health`, Streaming-Parser, Tages-/Wochenmediane, Perioden vor/nach OP, Plot)
+- [ ] Session-Schicht nach ADR-0009: `openacl session`, `openacl compare`, Report
 
 ## Phase 2 – Interpretation und Report (Monat 2–3)
 

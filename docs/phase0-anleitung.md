@@ -189,3 +189,42 @@ Kurze Liste zum Mitnehmen:
 - https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier/applewalkingsteadiness
 - https://support.apple.com/en-us/102504
 - https://www.superage.app/en/blog/apple-watch-gait-metrics-walking-asymmetry-steadiness/
+
+## 7. Auswertung am Abend (Stand 2026-09-05, alles lokal)
+
+Voraussetzung: Videos liegen als `A_pass01.mov` … `A_pass10.mov` in `data/sessions/2026-09-05_HHMM/`,
+daneben `meta.yaml` nach der Vorlage in `docs/PROTOKOLL-AUFNAHME.md`. Pflichtfelder im Block `subject`:
+`height_m` (sonst keine Schrittlänge, keine Geschwindigkeit, keine automatische Normband-Klasse) und
+`operated_side` (sonst kein Seitenvergleich „operiert vs. Gegenseite“).
+
+```bash
+cd ~/Documents/knee-model
+
+# 1. Ein Video kurz prüfen (fps, Auflösung, Codec):
+.venv/bin/openacl probe data/sessions/2026-09-05_1930/A_pass01.mov
+
+# 2. Session auswerten (ca. 70 s pro 8-Sekunden-Durchgang bei 60 fps, 10 Durchgänge ≈ 12 min):
+.venv/bin/openacl session data/sessions/2026-09-05_1930 --mode balanced
+
+# 3. Nach der Wiederholung 30 min später:
+.venv/bin/openacl session data/sessions/2026-09-05_2030 --mode balanced
+.venv/bin/openacl compare data/sessions/2026-09-05_1930 data/sessions/2026-09-05_2030
+
+# 4. Health-Verlauf mit richtigem OP-Datum neu rechnen:
+.venv/bin/openacl health data/health/export.zip --out data/health/derived --surgery-date 2026-03-XX
+```
+
+Ergebnis je Session in `derived/`: `report.md` (Tabelle, Beobachtungen, Normband-Kurven), `session.json`,
+`curve_*.png`. `compare` schreibt deinen ersten eigenen MDC nach `data/subject/mdc.yaml`; ab dann ersetzt
+er die Literatur-Platzhalter in allen weiteren Reports. Ein zweiter Lauf über dieselbe Session dauert
+Sekunden (Cache in `derived/<pass>/`). `--force` rechnet neu, `--mode lightweight` ist 3× schneller
+und gut zum Ausprobieren.
+
+Zwei Dinge, die du beim Lesen des ersten Reports wissen musst:
+
+- Die Standphase wird von der Ereigniserkennung systematisch um etwa 5,5 Prozentpunkte überschätzt
+  (gegen Kraftmessplatten validiert, `docs/validation/core_vs_fukuchi.md`). Der Seitenvergleich ist davon
+  nicht betroffen, der Absolutwert schon.
+- Ein Handy-Video misst die Knieflexion mit 5 bis 11° Fehler. Der erwartete Seitenunterschied sechs
+  Monate nach ACLR liegt bei etwa 2,6°. Ein Report, der nur „unter MDC“ zeigt, ist deshalb ein
+  erwartbares und ehrliches Ergebnis, kein Fehler des Tools.

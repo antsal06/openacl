@@ -38,7 +38,7 @@ import numpy as np
 
 from openacl.schema import KinematicsResult, Side, sided
 
-from ._trc_mot import read_mot, read_trc
+from ._trc_mot import TrcData, read_mot, read_trc
 from .video import VideoInfo, probe
 
 logger = logging.getLogger(__name__)
@@ -257,6 +257,43 @@ def _walking_direction(markers: dict[str, np.ndarray]) -> Literal["+x", "-x", "u
     return "unknown"
 
 
+def align_markers_to_time(trc: TrcData, time_s: np.ndarray) -> dict[str, np.ndarray]:
+    """Place a trimmed pose file back on the angle file's time axis, padding gaps with NaN.
+
+    With ``to_meters=True`` Sports2D writes the metre ``.trc`` only for the frames its
+    pixel-to-metre conversion could solve (it drops the leading/trailing frames in which the
+    person is not fully detected), while the ``.mot`` keeps the full video time base. Both
+    files carry a real ``Time`` column, so the pose rows are mapped back onto the angle time
+    axis by nearest frame; every frame without a pose row stays ``NaN``, which is what ADR-0007
+    asks for ("NaN for missing values, no interpolation inside a backend").
+
+    Raises ``ValueError`` when the two time axes do not overlap at all, because that means the
+    two files describe different runs rather than a trimmed one.
+    """
+    master = np.asarray(time_s, dtype=float)
+    if master.size < 2:
+        raise ValueError("angle file has fewer than two frames, cannot align the pose to it")
+    step_s = float(np.median(np.diff(master)))
+    if step_s <= 0:
+        raise ValueError("angle file time axis is not increasing")
+    positions = np.rint((np.asarray(trc.time_s, dtype=float) - master[0]) / step_s)
+    residual = np.abs((np.asarray(trc.time_s, dtype=float) - master[0]) / step_s - positions)
+    keep = (positions >= 0) & (positions < master.size) & (residual < 0.25)
+    if not keep.any():
+        raise ValueError(
+            f"pose and angle files do not overlap in time: pose "
+            f"{trc.time_s[0]:.3f}-{trc.time_s[-1]:.3f} s, angles {master[0]:.3f}-"
+            f"{master[-1]:.3f} s"
+        )
+    index = positions[keep].astype(int)
+    out: dict[str, np.ndarray] = {}
+    for name, xyz in trc.markers.items():
+        padded = np.full((master.size, xyz.shape[1]), np.nan)
+        padded[index] = xyz[keep]
+        out[name] = padded
+    return out
+
+
 @dataclass(frozen=True)
 class _ParsedRun:
     time_s: np.ndarray
@@ -345,20 +382,27 @@ def run_sports2d(
     trc = read_trc(trc_path)
     mot = read_mot(mot_path)
 
+    time_s = trc.time_s
+    markers = trc.markers
+    aligned_note: str | None = None
     if trc.time_s.shape[0] != mot.time_s.shape[0]:
-        raise ValueError(
-            f"pose and angle files disagree on frame count: {trc.time_s.shape[0]} vs "
-            f"{mot.time_s.shape[0]} ({trc_path.name} vs {mot_path.name})"
+        time_s = mot.time_s
+        markers = align_markers_to_time(trc, mot.time_s)
+        aligned_note = (
+            f"pose file has {trc.time_s.shape[0]} frames, angle file "
+            f"{mot.time_s.shape[0]}; the pose was placed back on the angle time axis via its "
+            "Time column, frames without a pose are NaN"
         )
+        logger.info("%s: %s", video, aligned_note)
 
-    n_frames = trc.time_s.shape[0]
+    n_frames = time_s.shape[0]
 
     keypoints: dict[str, np.ndarray] = {}
     confidence: dict[str, np.ndarray] = {}
     for marker_name, (base_name, side) in _KEYPOINT_MAP.items():
-        if marker_name not in trc.markers:
+        if marker_name not in markers:
             continue
-        xyz = trc.markers[marker_name]
+        xyz = markers[marker_name]
         coords = xyz if to_meters else xyz[:, :2]
         key = sided(base_name, side)
         keypoints[key] = coords
@@ -376,13 +420,13 @@ def run_sports2d(
         angles_deg["trunk_lean_deg"] = _trunk_lean_from_segment_deg(mot.angles[_TRUNK_COLUMN])
     # pelvis_tilt_deg deliberately omitted -- see module docstring.
 
-    camera_near_side = _resolve_camera_near_side(trc.markers, visible_side)
-    direction = _walking_direction(trc.markers)
+    camera_near_side = _resolve_camera_near_side(markers, visible_side)
+    direction = _walking_direction(markers)
 
     result = KinematicsResult(
         backend="sports2d",
         fps=trc.fps,
-        time_s=trc.time_s,
+        time_s=time_s,
         angles_deg=angles_deg,
         keypoints=keypoints,
         keypoint_unit="m" if to_meters else "px",
@@ -404,6 +448,7 @@ def run_sports2d(
             "config": config,
             "runtime_s": runtime_s,
             "n_frames": n_frames,
+            "pose_angle_alignment": aligned_note,
             "confidence_source": "nan_mask",
             "confidence_note": (
                 "Sports2D does not output per-keypoint confidence to file; confidence is 1.0 "

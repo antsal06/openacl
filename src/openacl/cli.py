@@ -1,4 +1,8 @@
-"""Command line entry point: ``openacl analyze <video>`` and ``openacl probe <video>``."""
+"""Command line entry point.
+
+Subcommands: ``analyze`` (one video), ``probe`` (container info), ``session`` (a whole
+recording session, ADR-0009) and ``compare`` (two sessions -> own MDC95).
+"""
 
 from __future__ import annotations
 
@@ -115,6 +119,13 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_health(args: argparse.Namespace) -> int:
+    """Delegate to ``python -m openacl.health`` with the remaining argv untouched."""
+    from openacl.health.__main__ import main as health_main
+
+    return health_main(args.health_argv)
+
+
 def _cmd_probe(args: argparse.Namespace) -> int:
     from openacl.backends.video import probe
 
@@ -134,6 +145,110 @@ def _cmd_probe(args: argparse.Namespace) -> int:
         print("warnings:")
         for warning in info.warnings:
             print(f"  - {warning}")
+    return 0
+
+
+def _cmd_session(args: argparse.Namespace) -> int:
+    from openacl.session.aggregate import aggregate_session
+    from openacl.session.model import load_session
+    from openacl.session.process import process_session
+    from openacl.session.report import write_report
+
+    session_dir = Path(args.session_dir)
+    if not session_dir.is_dir():
+        print(f"error: session directory not found: {session_dir}", file=sys.stderr)
+        return 1
+    try:
+        session = load_session(session_dir)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"Session {session.root}")
+    print(
+        f"  {len(session.passes_a)} camera-A pass(es), "
+        f"{len(session.passes_b)} camera-B pass(es) (not processed)"
+    )
+    for warning in session.meta.warnings:
+        print(f"  meta: {warning}")
+
+    normbands = None
+    try:
+        from openacl.norm import load_normbands
+
+        normbands = load_normbands()
+    except Exception as exc:  # noqa: BLE001 - norm bands are optional
+        print(f"  norm bands not loaded ({exc}); deviation scores skipped.")
+
+    results = process_session(
+        session,
+        mode=args.mode,
+        force=args.force,
+        normbands=normbands,
+        speed_class=args.speed_class,
+        progress=True,
+    )
+    summary = aggregate_session(
+        session,
+        results,
+        normbands=normbands,
+        pooling="all_sides" if args.all_sides else "camera_near",
+        speed_class=args.speed_class,
+    )
+    json_path = summary.write_json(session.derived_dir / "session.json")
+    paths = write_report(summary, session.derived_dir)
+
+    n_cycles = summary.quality.get("n_cycles", {})
+    print(
+        f"Pooled cycles: L={n_cycles.get('L', 0)} R={n_cycles.get('R', 0)} "
+        f"({summary.pooling}, speed class {summary.speed_class})"
+    )
+    for name, entry in summary.symmetry.items():
+        if entry.above_mdc:
+            print(
+                f"  above MDC: {name} delta={entry.delta:+.2f} "
+                f"(MDC {entry.mdc.value:.2f} {entry.mdc.unit})"
+            )
+    print(f"Wrote {json_path}")
+    print(f"Wrote {paths.markdown} and {len(paths.figures)} figure(s)")
+    failed = summary.quality.get("failed_passes") or {}
+    for name, error in failed.items():
+        print(f"  pass {name} failed: {error}", file=sys.stderr)
+    return 0
+
+
+def _cmd_compare(args: argparse.Namespace) -> int:
+    from openacl.session.compare import (
+        compare_sessions,
+        default_mdc_path,
+        read_session_json,
+    )
+    from openacl.session.compare import write_mdc_yaml as _write_mdc_yaml
+
+    try:
+        session_a = read_session_json(args.dir_a)
+        session_b = read_session_json(args.dir_b)
+    except FileNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    result = compare_sessions(session_a, session_b)
+    print(f"A: {result.session_a}")
+    print(f"B: {result.session_b}")
+    print(f"{'metric':<38} {'side':<4} {'A':>9} {'B':>9} {'B-A':>9} {'MDC95':>9}  flag")
+    for diff in result.differences:
+        mdc = f"{diff.mdc95:9.3f}" if diff.mdc95 is not None else "        –"
+        flag = "" if diff.above_mdc is None else ("above MDC" if diff.above_mdc else "below MDC")
+        print(
+            f"{diff.metric:<38} {diff.side:<4} {diff.value_a:9.3f} {diff.value_b:9.3f} "
+            f"{diff.delta:9.3f} {mdc}  {flag}"
+        )
+    for warning in result.warnings:
+        print(f"  note: {warning}")
+
+    out = Path(args.mdc_out) if args.mdc_out else default_mdc_path(args.dir_a)
+    written = _write_mdc_yaml(result, out)
+    print(f"Wrote {written} ({len(result.reliability)} parameter(s))")
     return 0
 
 
@@ -167,11 +282,62 @@ def main(argv: list[str] | None = None) -> int:
     )
     analyze_parser.set_defaults(func=_cmd_analyze)
 
+    session_parser = subparsers.add_parser(
+        "session", help="Process a whole recording session folder (ADR-0009)."
+    )
+    session_parser.add_argument("session_dir", type=str)
+    session_parser.add_argument(
+        "--mode", type=str, default="balanced", choices=["lightweight", "balanced", "performance"]
+    )
+    session_parser.add_argument(
+        "--force", action="store_true", help="Recompute passes that already have a cache."
+    )
+    session_parser.add_argument(
+        "--all-sides",
+        action="store_true",
+        dest="all_sides",
+        help="Pool both legs of every pass instead of only the camera-near one.",
+    )
+    session_parser.add_argument(
+        "--speed-class",
+        type=str,
+        default=None,
+        choices=["slow", "comfortable", "fast", "preferred"],
+        dest="speed_class",
+        help="Override the automatic Froude speed class of the norm band.",
+    )
+    session_parser.set_defaults(func=_cmd_session)
+
+    compare_parser = subparsers.add_parser(
+        "compare", help="Compare two sessions and write the own MDC95 to data/subject/mdc.yaml."
+    )
+    compare_parser.add_argument("dir_a", type=str)
+    compare_parser.add_argument("dir_b", type=str)
+    compare_parser.add_argument(
+        "--mdc-out",
+        type=str,
+        default=None,
+        dest="mdc_out",
+        help="Where to write mdc.yaml (default: <data>/subject/mdc.yaml next to session A).",
+    )
+    compare_parser.set_defaults(func=_cmd_compare)
+
     probe_parser = subparsers.add_parser("probe", help="Print container/stream info for a video.")
     probe_parser.add_argument("video", type=str)
     probe_parser.set_defaults(func=_cmd_probe)
 
-    args = parser.parse_args(argv)
+    health_parser = subparsers.add_parser(
+        "health",
+        help="Apple Health export (zip or xml) -> daily walking metrics, period summary, plot.",
+        add_help=False,
+    )
+    health_parser.set_defaults(func=_cmd_health)
+
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
+    if raw_argv and raw_argv[0] == "health":
+        # The health module owns its own parser; pass everything after "health" through.
+        return _cmd_health(argparse.Namespace(health_argv=raw_argv[1:]))
+    args = parser.parse_args(raw_argv)
 
     if args.version:
         from openacl import __version__

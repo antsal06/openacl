@@ -19,6 +19,16 @@ Plausibility filter
 Successive heel strikes of *alternating* sides must be ``min_step_time_s`` .. ``max_step_time_s``
 apart (default 0.3-2.0 s). Events violating the lower bound are dropped as spurious, a violation
 of the upper bound or a missing side alternation is reported in ``GaitEvents.warnings``.
+
+Known systematic bias (validated 2026-09-05, ``docs/validation/core_vs_fukuchi.md``)
+--------------------------------------------------------------------------------------
+Against force-plate events of the Fukuchi 2018 overground data set (12 subjects, 3 speeds,
+heel and MT1 markers) this implementation detects heel strike 37 +- 17 ms **early** and
+toe off 19 +- 29 ms **late**. Stance phase is therefore overestimated by about
+``KNOWN_STANCE_BIAS_PCT`` percentage points. The bias is the same for both sides, so
+left/right symmetry indices are unaffected; absolute stance/swing percentages and
+double-support estimates are not. Consumers comparing stance against norm bands must
+subtract the bias or widen thresholds accordingly. Cadence and stride time are unbiased.
 """
 
 from __future__ import annotations
@@ -38,6 +48,10 @@ SIDES: tuple[Side, Side] = ("L", "R")
 
 MIN_STEP_TIME_S = 0.3
 MAX_STEP_TIME_S = 2.0
+
+KNOWN_STANCE_BIAS_PCT = 5.5
+"""Stance-phase overestimation (percentage points) vs force plates, Fukuchi 2018, n=26 trials."""
+KNOWN_STANCE_BIAS_SD_PCT = 1.25
 
 
 @dataclass(frozen=True, eq=False)

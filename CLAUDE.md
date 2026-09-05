@@ -14,3 +14,18 @@ Ganganalyse aus Handy-Video für ACLR-Reha. Schichten: Aufnahme → Kinematik-En
 
 ## Kontext zu Anton (für Interpretation und Tests)
 Vorderes Kreuzband, Semitendinosus-Gracilis-Transplantat (STG/Hamstring), OP ca. März 2026. Mehrere iPhones verfügbar. Ziel zuerst persönliche Baseline, dann Open Source.
+
+- Trenne Beobachtung und Schlussfolgerung. Erst was konkret im Code
+  steht (mit Datei:Zeile), dann die Interpretation, sichtbar getrennt.
+- Kennzeichne die Quelle jeder Aussage über das Verhalten des Codes:
+  [ausgeführt] / [gelesen] / [vermutet]. Ohne Ausnahme.
+- Nenne bei jeder Diagnose entweder eine zweite plausible Ursache
+  oder sag explizit, dass du keine siehst.
+- Nenne bei jeder Diagnose, wie ich sie selbst in 30 Sekunden
+  überprüfen kann.
+- Sag, was du NICHT angeschaut hast, bevor du ein Fazit ziehst.
+- "Ich weiß es nicht" ist eine vollständige und akzeptable Antwort.
+  Rate nicht, um hilfreich zu wirken.
+- Verboten: "ehrlich gesagt", "um ehrlich zu sein", "das muss ich
+  zugeben", "in der Tat", "genau das ist der Punkt".
+- Keine Zusammenfassung am Ende, wenn die Antwort unter 20 Zeilen ist.
