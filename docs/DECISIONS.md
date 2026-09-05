@@ -46,8 +46,23 @@ Status: vorgeschlagen 2026-09-05
 **Konsequenzen.** Session-Datenmodell muss von Anfang an mehrere Quellen pro Session erlauben (Video, Health-Export, später IMU, EMG).
 
 ## ADR-0006 GCP: eigenes Projekt, Region Europa, Cloud Run mit GPU, Skalierung auf null
-Status: vorgeschlagen 2026-09-05
+Status: angenommen 2026-09-05 (Projekt `openacl1` von Anton angelegt, Billing verknüpft, APIs aktiviert)
 
 **Kontext.** Viel GCP-Guthaben, sporadische Analysejobs, keine 24/7-Last. Aktuelle gcloud-Default-Konfig zeigt auf `pace-mcp`, das ist ein anderes Projekt.
-**Entscheidung (Vorschlag).** Neues Projekt `openacl`, Region `europe-west4` (Niederlande, Cloud-Run-GPU L4 verfügbar; `europe-west1` als Alternative). Phase 1 und 2 laufen lokal, GCP wird erst in Phase 3 für die Web-App und für GPU-Backends gebraucht. Ausnahme: OpenCap Monocular in Phase 0 auf einer Compute-Engine-VM mit einer L4 oder T4, weil das auf dem M2 ohne CUDA nicht sinnvoll läuft.
+**Entscheidung.** Projekt `openacl1` (Projektnummer 748303749622), Region `europe-west4` (Niederlande, Cloud-Run-GPU L4 verfügbar; `europe-west1` als Alternative). Phase 1 und 2 laufen lokal, GCP wird erst in Phase 3 für die Web-App und für GPU-Backends gebraucht. Ausnahme: OpenCap Monocular in Phase 0 auf einer Compute-Engine-VM mit einer L4 oder T4, weil das auf dem M2 ohne CUDA nicht sinnvoll läuft.
 **Konsequenzen.** Setup-Anleitung in `infra/GCP-SETUP.md`. Kein Service-Account-Key im Repo, lokal über `gcloud auth application-default login`.
+
+## ADR-0007 Gemeinsames Kinematik-Schema und Paketstruktur
+Status: vorgeschlagen 2026-09-05
+
+**Kontext.** ADR-0002 verlangt austauschbare Backends. Damit Gait-Core und Interpretation backend-unabhängig testbar sind, braucht es einen festen Vertrag zwischen Schicht 2 und 3, bevor Code entsteht.
+**Entscheidung (Vorschlag).** `src/openacl/schema.py` definiert `KinematicsResult`: Zeitachse `time_s`, Winkelkanäle `angles_deg` mit kanonischen Namen (`knee_flexion_deg_L`, `hip_flexion_deg_R`, ...), Keypoints (`heel_L`, `big_toe_R`, ...) in px (2D) oder m (3D), Konfidenz je Keypoint, Gehrichtung, kameranahe Seite, Provenienz-Metadaten. NaN für fehlende Werte, keine Interpolation im Backend. Klinische Vorzeichen: Knieflexion, Hüftflexion, Dorsalextension positiv. Persistenz als `.npz` + `.json` ohne Pickle.
+Paketstruktur: `openacl.backends` (Adapter → `KinematicsResult`), `openacl.core` (Filter, Events, Zyklen, Parameter, Symmetrie, Normvergleich, MDC; importiert nie ein Backend), `openacl.norm` (Normdaten-Loader und -Bänder), `openacl.interpret` (Regeln, Report), `openacl.cli`.
+**Konsequenzen.** Jedes Backend ist ein Adapter von ca. 100 Zeilen. Gait-Core-Tests laufen mit synthetischen `KinematicsResult`-Objekten und mit den Marker-Datensätzen, ganz ohne Video. Wenn später ein 3D-Backend Frontalebenen-Winkel liefert, kommen neue kanonische Kanäle dazu (`hip_adduction_deg`), das Schema bleibt.
+
+## ADR-0008 Normdaten: Rohdaten lokal, abgeleitete Normbänder im Repo
+Status: vorgeschlagen 2026-09-05
+
+**Kontext.** Die Normdatensätze (Fukuchi 2018, Schreiber/Moissenet 2019, Van Criekinge 2023) sind einige Gigabyte C3D. Das Repo soll klein bleiben, ein Nutzer soll aber ohne Download analysieren können.
+**Entscheidung (Vorschlag).** Rohdaten nach `data/norm/<dataset>/` (ignoriert), reproduzierbar per `scripts/build_normbands.py`. Im Repo liegen nur die abgeleiteten, kleinen Normbänder (Mittelwert, SD, Perzentile je Gelenkkanal über 0–100 % Gangzyklus, je Geschwindigkeitsklasse nach Froude-Zahl, plus Zeit-Weg-Parameter) als Parquet oder JSON unter `src/openacl/norm/data/`, mit Attribution und Lizenzhinweis je Quelle. Jede Datei nennt Datensatz, Version, Anzahl Probanden, Verarbeitungsschritte.
+**Konsequenzen.** Lizenzprüfung der Datensätze gehört zur Definition of Done des Normband-Pakets. Wenn ein Datensatz nur „für Forschung“ lizenziert ist, gehen seine Ableitungen nicht ins öffentliche Repo.

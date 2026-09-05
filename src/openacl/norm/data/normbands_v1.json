@@ -1,0 +1,336 @@
+{
+  "version": "v1",
+  "script_version": "1.0.0",
+  "processed_utc": "2026-09-05T09:06:50+00:00",
+  "n_points": 101,
+  "speed_classes": [
+    "slow",
+    "comfortable",
+    "fast"
+  ],
+  "froude_edges": {
+    "fukuchi2018": [
+      0.13038061623388866,
+      0.2306065486401898
+    ]
+  },
+  "froude_definition": "Fr = v^2 / (g * L_leg), g = 9.80665 m/s^2",
+  "leg_length_fallback": "L_leg = 0.53 * height_m",
+  "sides": "left and right pooled",
+  "datasets": [
+    {
+      "key": "fukuchi2018",
+      "citation": "Fukuchi CA, Fukuchi RK, Duarte M (2018). A public data set of overground and treadmill walking kinematics and kinetics of healthy individuals. PeerJ 6:e4640.",
+      "doi": "10.6084/m9.figshare.5722711",
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "role": "speed-classified angle bands and time-distance parameters (overground)"
+    },
+    {
+      "key": "vancriekinge2023",
+      "citation": "Van Criekinge T, Saeys W, Truijen S, et al. (2023). A full-body motion capture gait dataset of 138 able-bodied adults across the life span and 50 stroke survivors. Sci Data 10:852.",
+      "doi": "10.6084/m9.figshare.c.6503791",
+      "license": "CC0 1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "role": "independent cross-check at preferred speed; no speed/anthropometrics in the public Excel export, therefore no Froude class"
+    }
+  ],
+  "counts": [
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "ankle_dorsiflexion_deg",
+      "speed_class": "comfortable",
+      "n_subjects": 37,
+      "n_curves": 84
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "ankle_dorsiflexion_deg",
+      "speed_class": "fast",
+      "n_subjects": 34,
+      "n_curves": 82
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "ankle_dorsiflexion_deg",
+      "speed_class": "slow",
+      "n_subjects": 39,
+      "n_curves": 83
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "hip_flexion_deg",
+      "speed_class": "comfortable",
+      "n_subjects": 37,
+      "n_curves": 84
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "hip_flexion_deg",
+      "speed_class": "fast",
+      "n_subjects": 34,
+      "n_curves": 82
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "hip_flexion_deg",
+      "speed_class": "slow",
+      "n_subjects": 39,
+      "n_curves": 83
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "knee_flexion_deg",
+      "speed_class": "comfortable",
+      "n_subjects": 37,
+      "n_curves": 84
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "knee_flexion_deg",
+      "speed_class": "fast",
+      "n_subjects": 34,
+      "n_curves": 82
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "knee_flexion_deg",
+      "speed_class": "slow",
+      "n_subjects": 39,
+      "n_curves": 83
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "pelvis_tilt_deg",
+      "speed_class": "comfortable",
+      "n_subjects": 37,
+      "n_curves": 42
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "pelvis_tilt_deg",
+      "speed_class": "fast",
+      "n_subjects": 33,
+      "n_curves": 40
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "angle_curve",
+      "channel": "pelvis_tilt_deg",
+      "speed_class": "slow",
+      "n_subjects": 39,
+      "n_curves": 41
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "cadence_steps_min",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "cadence_steps_min",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "cadence_steps_min",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "double_support_pct",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "double_support_pct",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "double_support_pct",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "speed_m_s",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "speed_m_s",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "speed_m_s",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stance_pct",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stance_pct",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stance_pct",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "step_length_m",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "step_length_m",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "step_length_m",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stride_length_m",
+      "speed_class": "comfortable",
+      "n_subjects": 32,
+      "n_curves": 113
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stride_length_m",
+      "speed_class": "fast",
+      "n_subjects": 19,
+      "n_curves": 58
+    },
+    {
+      "dataset": "fukuchi2018",
+      "kind": "scalar",
+      "channel": "stride_length_m",
+      "speed_class": "slow",
+      "n_subjects": 34,
+      "n_curves": 95
+    },
+    {
+      "dataset": "vancriekinge2023",
+      "kind": "angle_curve",
+      "channel": "ankle_dorsiflexion_deg",
+      "speed_class": "preferred",
+      "n_subjects": 138,
+      "n_curves": 138
+    },
+    {
+      "dataset": "vancriekinge2023",
+      "kind": "angle_curve",
+      "channel": "hip_flexion_deg",
+      "speed_class": "preferred",
+      "n_subjects": 138,
+      "n_curves": 138
+    },
+    {
+      "dataset": "vancriekinge2023",
+      "kind": "angle_curve",
+      "channel": "knee_flexion_deg",
+      "speed_class": "preferred",
+      "n_subjects": 138,
+      "n_curves": 138
+    },
+    {
+      "dataset": "vancriekinge2023",
+      "kind": "angle_curve",
+      "channel": "pelvis_tilt_deg",
+      "speed_class": "preferred",
+      "n_subjects": 138,
+      "n_curves": 138
+    }
+  ],
+  "condition": "overground walking only",
+  "plausibility_ranges": {
+    "peak_knee_flexion_deg": [
+      55.0,
+      70.0
+    ],
+    "stance_pct": [
+      56.0,
+      64.0
+    ],
+    "cadence_steps_min": [
+      90.0,
+      135.0
+    ],
+    "double_support_pct": [
+      12.0,
+      30.0
+    ]
+  },
+  "known_limitations": [
+    "marker-based optical motion capture; smartphone video measures differently",
+    "Van Criekinge curves are already pooled over sides and strides and carry no walking speed, so they are stored as a separate 'preferred' class",
+    "time-distance parameters come from force-plate events of overground passes"
+  ]
+}

@@ -1,20 +1,20 @@
 # GCP-Setup für OpenACL
 
-Du legst das Projekt an, weil dafür dein Billing-Konto nötig ist. Danach kann ich mit `gcloud` arbeiten.
+Stand 2026-09-05: Projekt `openacl1` existiert, Billing ist verknüpft, Region `europe-west4`, Bucket `gs://openacl1-sessions` (privat, uniform access, public-access-prevention). Aktivierte APIs: compute, storage, run, artifactregistry, cloudbuild, cloudresourcemanager, serviceusage.
 
 ## 1. Projekt anlegen (du, einmalig)
 
 ```bash
-gcloud projects create openacl-<suffix> --name="OpenACL"
+gcloud projects create openacl1 --name="OpenACL"
 gcloud billing accounts list
-gcloud billing projects link openacl-<suffix> --billing-account=<ACCOUNT_ID>
+gcloud billing projects link openacl1 --billing-account=<ACCOUNT_ID>
 ```
 
 Danach in dieser Session als Default setzen, ohne das andere Projekt anzufassen:
 
 ```bash
 gcloud config configurations create openacl
-gcloud config set project openacl-<suffix>
+gcloud config set project openacl1
 gcloud config set compute/region europe-west4
 gcloud config set compute/zone europe-west4-a
 gcloud auth application-default login
@@ -37,13 +37,13 @@ Eine VM mit L4-GPU, nur für den Benchmark, danach löschen oder stoppen. Grobe 
 gcloud compute instances create openacl-gpu \
   --zone=europe-west4-a --machine-type=g2-standard-4 \
   --accelerator=type=nvidia-l4,count=1 \
-  --image-family=common-cu124-ubuntu-2204 --image-project=deeplearning-platform-release \
+  --image-family=common-cu129-ubuntu-2204-nvidia-580 --image-project=deeplearning-platform-release \
   --boot-disk-size=200GB --maintenance-policy=TERMINATE \
   --metadata=install-nvidia-driver=True
 gcloud compute instances stop openacl-gpu   # nach dem Benchmark
 ```
 
-Falls die GPU-Quote in der Region 0 ist, unter IAM → Kontingente „GPUs (all regions)“ und „NVIDIA L4“ auf 1 anheben.
+Quote geprüft 2026-09-05: L4 16, T4 8 in europe-west4, kein Antrag nötig. Image-Familie `common-cu124` ist seit 2026-04 deprecated, deshalb `cu129`. Falls die GPU-Quote in der Region 0 ist, unter IAM → Kontingente „GPUs (all regions)“ und „NVIDIA L4“ auf 1 anheben.
 
 ## 4. Phase 3: Cloud Run mit GPU
 

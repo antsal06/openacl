@@ -11,6 +11,7 @@ gcloud/
 # Rohdaten und Videos (nie ins Repo)
 data/
 !data/sessions/.gitkeep
+!src/openacl/norm/data/
 *.mp4
 *.mov
 *.MOV
