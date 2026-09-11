@@ -83,6 +83,46 @@ _JOINT_ANGLE_MAP: dict[str, tuple[str, Side]] = {
 _TRUNK_COLUMN = "trunk"
 _PELVIS_COLUMN = "pelvis"
 
+WRAP_RULES_DEG: dict[str, tuple[float, float]] = {
+    "knee_flexion_deg": (-60.0, 120.0),
+    "ankle_dorsiflexion_deg": (-90.0, 90.0),
+}
+"""Plausible window per channel base name; a value outside it is shifted by +-180 deg.
+
+Sports2D decides the visible side per frame from the toe-heel orientation and mirrors the
+x coordinates before computing angles. When that decision is wrong (heel and toe keypoints
+swapped on a partly occluded or small foot) the knee comes out as ``true - 180`` and the ankle
+as ``true + 180`` -- pure offsets, the range of motion is preserved (verified 2026-09-11 on
+Anton's session: a fully wrapped pass kept its 63 deg knee ROM). Shifting by 180 restores
+the measurement instead of discarding the cycle (ADR-0010)."""
+
+
+def unwrap_angles(
+    angles_deg: dict[str, np.ndarray], rules: dict[str, tuple[float, float]] = WRAP_RULES_DEG
+) -> dict[str, int]:
+    """Shift angle samples outside their plausible window by +-180 deg, in place.
+
+    Returns ``{channel: n_frames_shifted}``; channels without a rule are left untouched.
+    """
+    shifted: dict[str, int] = {}
+    for name, series in angles_deg.items():
+        base = name[:-2] if name.endswith(("_L", "_R")) else name
+        rule = rules.get(base)
+        if rule is None:
+            continue
+        lo, hi = rule
+        low = np.isfinite(series) & (series < lo)
+        high = np.isfinite(series) & (series >= hi)
+        if low.any():
+            series[low] += 180.0
+        if high.any():
+            series[high] -= 180.0
+        n = int(low.sum() + high.sum())
+        if n:
+            shifted[name] = n
+    return shifted
+
+
 DEFAULT_DET_FREQUENCY = 4
 """Run person detection every N frames; keypoint detection still runs every frame. Raise this
 (e.g. to 8-10) if RAM is tight on an 8 GB machine -- detection, not pose estimation, is the
@@ -420,6 +460,14 @@ def run_sports2d(
         angles_deg["trunk_lean_deg"] = _trunk_lean_from_segment_deg(mot.angles[_TRUNK_COLUMN])
     # pelvis_tilt_deg deliberately omitted -- see module docstring.
 
+    wrapped = unwrap_angles(angles_deg)
+    if wrapped:
+        logger.warning(
+            "%s: angles shifted by 180 deg (wrong visible-side flip on a heel/toe swap): %s",
+            video,
+            wrapped,
+        )
+
     camera_near_side = _resolve_camera_near_side(markers, visible_side)
     direction = _walking_direction(markers)
 
@@ -449,6 +497,8 @@ def run_sports2d(
             "runtime_s": runtime_s,
             "n_frames": n_frames,
             "pose_angle_alignment": aligned_note,
+            "angles_unwrapped_180": wrapped,
+            "unwrap_rules_deg": {k: list(v) for k, v in WRAP_RULES_DEG.items()},
             "confidence_source": "nan_mask",
             "confidence_note": (
                 "Sports2D does not output per-keypoint confidence to file; confidence is 1.0 "

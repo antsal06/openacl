@@ -26,12 +26,12 @@ Ziel: Aufnahmen, die zwischen Sessions vergleichbar sind. Gleicher Ort, gleiche 
 
 1. Metadaten notieren (siehe unten).
 2. 2 Minuten locker einlaufen.
-3. **10 Durchgänge sagittal**, abwechselnd von links nach rechts und von rechts nach links, damit jedes Bein fünfmal kameranah ist. Selbstgewähltes, normales Tempo. Nicht auf den Gang konzentrieren, an etwas anderes denken.
-4. Optional 4 Durchgänge bewusst schnell (für die Geschwindigkeitsabhängigkeit).
+3. **Kamera A läuft durch, 10 bis 20 Durchgänge sagittal**, abwechselnd von links nach rechts und von rechts nach links, damit jedes Bein möglichst gleich oft kameranah ist. Selbstgewähltes, normales Tempo. Nicht auf den Gang konzentrieren, an etwas anderes denken. Ein Stopp/Start pro Durchgang ist nicht nötig: die Kamera bleibt an, `openacl segment` (ADR-0010) erkennt die einzelnen Durchgänge im Nachhinein aus der Bewegung und schneidet sie automatisch zu `A_pass01.mp4` ... Die mittleren 4 bis 5 m Messbereich liefern dabei ca. 2 Gangzyklen je Seite und Durchgang, also für ~20 Zyklen je Seite braucht es ~20 Durchgänge (mehr Messstrecke gäbe mehr Zyklen pro Durchgang, ist aber örtlich meist nicht verfügbar). Jede Bedingung (Socken, Schuhe, schnell, ...) ist ein eigenes Langvideo und wird zu einer eigenen Session (`condition` in `meta.yaml`, ADR-0010); Bedingungen werden nicht gepoolt.
+4. Optional ein zusätzliches Langvideo bewusst schnell (für die Geschwindigkeitsabhängigkeit).
 5. Optional 4 Durchgänge direkt auf Kamera B zu und von ihr weg (Frontalebene, nur qualitativ).
-6. Für die Messfehler-Schätzung in Phase 0: nach 30 Minuten Pause Schritt 3 komplett wiederholen, Kameras nicht anfassen.
+6. Für die Messfehler-Schätzung in Phase 0: nach 30 Minuten Pause Schritt 3 komplett wiederholen, Kameras nicht anfassen (das Wiederholungs-Video ist die zweite `condition` desselben Aufbaus, z. B. `socken-2`, das Test-Retest-Paar für `openacl compare`).
 
-Ergebnis: rund 40 bis 50 Gangzyklen pro Bein pro Session. Das ist genug zum Mitteln.
+Ergebnis: rund 20 Gangzyklen pro Bein pro Bedingung bei 20 Durchgängen und 5 m Messbereich. Das ist genug zum Mitteln; mehr Durchgänge oder mehr Messstrecke geben mehr.
 
 ## Metadaten je Session
 
@@ -56,7 +56,15 @@ sleep_hours: 7
 activity_yesterday: "Rad 40 min"
 notes: ""
 cameras:
-  A: { device: "iPhone 15", position: "sagittal links vom Weg, 4.5 m, 0.95 m Höhe", fps: 60 }
+  A:
+    device: "iPhone 15"
+    position: "sagittal links vom Weg, 4.5 m, 0.95 m Höhe"
+    fps: 60
+    distance_m: 4.5             # Kamera-zu-Person-Abstand; ersetzt Sports2Ds 10-m-Default
+                                 # für die Perspektivkorrektur (px_to_meters_conversion)
+    near_side_when_walking_plus_x: R   # ADR-0010: welche Seite ist kameranah, wenn die
+                                        # x-Koordinate beim Gehen wächst? Aufbauabhängig,
+                                        # nur nötig, wenn die Session eine passes.yaml hat.
   B: { device: "iPhone 13", position: "45° Wegende, 0.95 m Höhe", fps: 60 }
 ```
 

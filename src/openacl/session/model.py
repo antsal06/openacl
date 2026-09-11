@@ -20,13 +20,14 @@ or a session without any pass is an error.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
 
 from openacl.schema import Side
+from openacl.session.segment import PASSES_FILENAME
 
 VIDEO_SUFFIXES: tuple[str, ...] = (".mov", ".mp4", ".m4v", ".avi")
 """Accepted container suffixes, matched case-insensitively (iPhone writes ``.MOV``)."""
@@ -34,6 +35,11 @@ VIDEO_SUFFIXES: tuple[str, ...] = (".mov", ".mp4", ".m4v", ".avi")
 DERIVED_DIRNAME = "derived"
 META_FILENAME = "meta.yaml"
 KINEMATICS_STEM = "kinematics"
+
+DEFAULT_NEAR_SIDE_WHEN_WALKING_PLUS_X: Side = "R"
+"""Fallback for ``meta.yaml`` ``cameras.A.near_side_when_walking_plus_x`` (ADR-0010): which
+subject side is camera-near while walking in the ``+x`` direction. Aufbau-abhängig; Antons
+Aufbau vom 2026-09-07 matches this default, but a differently placed camera A does not."""
 
 _PASS_PATTERN = re.compile(r"^(?P<camera>[A-Za-z])_pass(?P<number>\d+)$")
 
@@ -107,10 +113,39 @@ class SessionMeta:
     def height_m(self) -> float | None:
         return self.subject.height_m
 
+    @property
+    def near_side_when_walking_plus_x(self) -> Side:
+        """``cameras.A.near_side_when_walking_plus_x``, or :data:`DEFAULT_NEAR_SIDE_WHEN_WALKING_PLUS_X`.
+
+        Used to translate a segmented pass's ``direction`` (ADR-0010, ``passes.yaml``) into
+        Sports2D's ``visible_side`` (ADR-0010, ``openacl.session.process.run_backend``).
+        """
+        camera_a = self.cameras.get("A")
+        value = (
+            camera_a.get("near_side_when_walking_plus_x") if isinstance(camera_a, dict) else None
+        )
+        if isinstance(value, str) and value.strip().upper() in ("L", "R"):
+            return value.strip().upper()  # type: ignore[return-value]
+        return DEFAULT_NEAR_SIDE_WHEN_WALKING_PLUS_X
+
     def camera_fps(self, camera: str = "A") -> float | None:
         """Nominal frame rate the protocol says camera ``camera`` was set to."""
         entry = self.cameras.get(camera) or {}
         value = entry.get("fps")
+        try:
+            return float(value) if value is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def camera_distance_m(self, camera: str = "A") -> float | None:
+        """``cameras.<camera>.distance_m`` (``docs/PROTOKOLL-AUFNAHME.md``), or ``None``.
+
+        Fed into Sports2D's ``px_to_meters_conversion.perspective_value`` (its own
+        camera-to-person distance perspective correction, default 10 m) so it does not silently
+        use that default for a 4.5-5 m setup.
+        """
+        entry = self.cameras.get(camera) or {}
+        value = entry.get("distance_m")
         try:
             return float(value) if value is not None else None
         except (TypeError, ValueError):
@@ -276,30 +311,57 @@ def parse_meta(raw: dict[str, Any] | None) -> SessionMeta:
     )
 
 
+def _warn_if_near_side_config_missing(meta: SessionMeta, session_dir: Path) -> SessionMeta:
+    """Append a warning when a ``passes.yaml`` exists but the near-side config does not (ADR-0010).
+
+    Segmented passes (``openacl segment``) need ``cameras.A.near_side_when_walking_plus_x`` to
+    turn each pass's walking direction into Sports2D's ``visible_side``; silently defaulting to
+    :data:`DEFAULT_NEAR_SIDE_WHEN_WALKING_PLUS_X` without saying so would make a wrong camera
+    setup fail quietly.
+    """
+    if not (session_dir / PASSES_FILENAME).exists():
+        return meta
+    camera_a = meta.cameras.get("A")
+    configured = (
+        camera_a.get("near_side_when_walking_plus_x") if isinstance(camera_a, dict) else None
+    )
+    if configured is not None:
+        return meta
+    warning = (
+        f"{session_dir / PASSES_FILENAME} exists but meta.yaml has no "
+        "cameras.A.near_side_when_walking_plus_x; defaulting to "
+        f"{DEFAULT_NEAR_SIDE_WHEN_WALKING_PLUS_X!r} (ADR-0010). This is setup-dependent -- set "
+        "it explicitly if camera A is not positioned like Anton's 2026-09-07 recording."
+    )
+    return replace(meta, warnings=meta.warnings + (warning,))
+
+
 def read_meta(session_dir: Path | str) -> SessionMeta:
     """Read ``<session_dir>/meta.yaml``; a missing file yields an empty, warned-about meta."""
     path = Path(session_dir) / META_FILENAME
     if not path.exists():
         empty = parse_meta({})
-        return SessionMeta(
+        meta = SessionMeta(
             **{name: getattr(empty, name) for name in SCALAR_META_FIELDS},
             subject=empty.subject,
             cameras=empty.cameras,
             raw={},
             warnings=(f"no {META_FILENAME} in {path.parent}",) + empty.warnings,
         )
+        return _warn_if_near_side_config_missing(meta, path.parent)
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
         parsed = parse_meta({})
-        return SessionMeta(
+        meta = SessionMeta(
             **{name: getattr(parsed, name) for name in SCALAR_META_FIELDS},
             subject=parsed.subject,
             cameras=parsed.cameras,
             raw={},
             warnings=(f"{META_FILENAME} could not be parsed: {exc}",),
         )
-    return parse_meta(raw)
+        return _warn_if_near_side_config_missing(meta, path.parent)
+    return _warn_if_near_side_config_missing(parse_meta(raw), path.parent)
 
 
 def _pass_from_stem(stem: str, video: Path | None) -> PassFile | None:
@@ -395,6 +457,46 @@ def load_session(session_dir: Path | str) -> Session:
         passes_b=passes_b,
         warnings=tuple(warnings),
     )
+
+
+def read_pass_directions(session_dir: Path | str) -> dict[str, Literal["+x", "-x"]]:
+    """Map pass name (e.g. ``"A_pass01"``) -> walking ``direction`` from ``passes.yaml``.
+
+    Returns an empty mapping when there is no ``passes.yaml`` (a session recorded the old way,
+    one video per pass) or it cannot be parsed.
+    """
+    path = Path(session_dir) / PASSES_FILENAME
+    if not path.exists():
+        return {}
+    try:
+        entries = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return {}
+    if not isinstance(entries, list):
+        return {}
+    directions: dict[str, Literal["+x", "-x"]] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        file_name = entry.get("file")
+        direction = entry.get("direction")
+        if not file_name or direction not in ("+x", "-x"):
+            continue
+        directions[Path(str(file_name)).stem] = direction
+    return directions
+
+
+def resolve_near_side_from_direction(
+    direction: Literal["+x", "-x"], near_side_when_walking_plus_x: Side
+) -> Side:
+    """Translate a pass's walking ``direction`` into the camera-near side (ADR-0010).
+
+    Empirical for a static sagittal camera: whichever side is camera-near while walking ``+x``
+    is camera-far while walking ``-x``, and vice versa.
+    """
+    if direction == "+x":
+        return near_side_when_walking_plus_x
+    return "L" if near_side_when_walking_plus_x == "R" else "R"
 
 
 PoolingMode = Literal["camera_near", "all_sides"]

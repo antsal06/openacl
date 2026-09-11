@@ -34,6 +34,9 @@ ANGLE_CHANNELS: tuple[str, ...] = (
     "ankle_dorsiflexion_deg",
     "trunk_lean_deg",  # segment angle vs vertical, no side
     "pelvis_tilt_deg",  # sagittal, no side
+    "pelvis_list_deg",  # frontal-plane pelvis obliquity, no side (ADR-0011, opencap only)
+    "hip_adduction_deg",  # frontal plane (ADR-0011, opencap only)
+    "hip_rotation_deg",  # transverse plane (ADR-0011, opencap only)
 )
 
 # Canonical keypoint names (subset of COCO/Halpe-26 that gait-core relies on).

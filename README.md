@@ -47,6 +47,33 @@ Normbänder neu bauen (lädt ca. 1 GB nach `data/norm/`):
 .venv/bin/python scripts/build_normbands.py
 ```
 
+## Eine ganze Session: Langvideo → Segmentierung → Session → Vergleich
+
+Die Kamera läuft während einer Bedingung durch (10 bis 20 Durchgänge hin und her,
+`docs/PROTOKOLL-AUFNAHME.md`), `openacl segment` schneidet daraus die einzelnen Durchgänge
+(ADR-0010), `openacl session` verarbeitet die Session (ADR-0009), `openacl compare` vergleicht
+zwei Sessions (z. B. Test-Retest) und schreibt den eigenen MDC95.
+
+```bash
+# 1. Langvideo einer Bedingung in Durchgänge schneiden; --dry-run zeigt nur die Erkennung
+.venv/bin/openacl segment A_socken.mov --out data/sessions/2026-09-11_socken \
+    --meta data/sessions/2026-09-11_socken_quelle/meta.yaml --condition socken
+
+# 2. Session verarbeiten (Sports2D je Durchgang, Gait-Core, gepoolte Kennzahlen, Report)
+.venv/bin/openacl session data/sessions/2026-09-11_socken
+
+# 3. Zwei Sessions vergleichen (z. B. Wiederholung am selben Tag -> eigener MDC95)
+.venv/bin/openacl compare data/sessions/2026-09-11_socken data/sessions/2026-09-11_socken-2
+```
+
+`openacl segment` erkennt Durchgänge ohne Pose-Modell aus der Bewegung (Vordergrundfläche und
+Schwerpunkt-Drift gegen einen Median-Hintergrund) und schreibt `A_pass<NN>.mp4` plus
+`passes.yaml` (Zeitfenster, Richtung, Drift). `openacl session` übersetzt die Richtung jedes
+Durchgangs über `meta.yaml` `cameras.A.near_side_when_walking_plus_x` in Sports2Ds
+`visible_side`, statt sich auf dessen Pro-Video-Heuristik zu verlassen (die bei einem Video mit
+beiden Gehrichtungen falsch liegt). Details und Schwellwerte: ADR-0010, ADR-0011 in
+`docs/DECISIONS.md`.
+
 ## Lizenz
 
 Apache 2.0. Der Produktionspfad nutzt ausschließlich permissiv lizenzierte Komponenten

@@ -119,6 +119,43 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_segment(args: argparse.Namespace) -> int:
+    from openacl.session.segment import segment_video
+
+    video = Path(args.video)
+    if not video.exists():
+        print(f"error: video not found: {video}", file=sys.stderr)
+        return 1
+
+    try:
+        if args.dry_run:
+            passes = segment_video(video, args.out, dry_run=True)
+            print(f"{video.name}: {len(passes)} pass(es) detected (dry run, nothing written)")
+            for k, p in enumerate(passes, start=1):
+                print(
+                    f"  {k:2d}. {p.t_start_s:7.2f}-{p.t_end_s:7.2f} s ({p.duration_s:5.2f} s), "
+                    f"direction={p.direction}, drift={p.drift_px:+.1f} px, area={p.mean_area:.4f}"
+                )
+            return 0
+
+        out_dir = Path(args.out)
+        passes = segment_video(
+            video,
+            out_dir,
+            meta_src=Path(args.meta) if args.meta else None,
+            condition=args.condition,
+        )
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"{video.name}: cut {len(passes)} pass(es) into {out_dir}")
+    for p in passes:
+        print(f"  {p.file}: {p.t_start_s:.2f}-{p.t_end_s:.2f} s, direction={p.direction}")
+    print(f"Wrote {out_dir / 'passes.yaml'}")
+    return 0
+
+
 def _cmd_health(args: argparse.Namespace) -> int:
     """Delegate to ``python -m openacl.health`` with the remaining argv untouched."""
     from openacl.health.__main__ import main as health_main
@@ -321,6 +358,21 @@ def main(argv: list[str] | None = None) -> int:
         help="Where to write mdc.yaml (default: <data>/subject/mdc.yaml next to session A).",
     )
     compare_parser.set_defaults(func=_cmd_compare)
+
+    segment_parser = subparsers.add_parser(
+        "segment", help="Cut a long, static-camera video into per-pass clips (ADR-0010)."
+    )
+    segment_parser.add_argument("video", type=str)
+    segment_parser.add_argument("--out", type=str, required=True, dest="out")
+    segment_parser.add_argument("--meta", type=str, default=None, help="Source meta.yaml to copy.")
+    segment_parser.add_argument("--condition", type=str, default=None)
+    segment_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Only print the detected passes, write nothing.",
+    )
+    segment_parser.set_defaults(func=_cmd_segment)
 
     probe_parser = subparsers.add_parser("probe", help="Print container/stream info for a video.")
     probe_parser.add_argument("video", type=str)

@@ -36,7 +36,9 @@ Stand 2026-09-05 (erste Bauwelle, vor Antons erster Aufnahme vorgezogen, weil oh
 - [ ] Ereigniserkennung verbessern: Fersen-Vorwärtsgeschwindigkeit unter Schwelle für Heel Strike, Zehen-Geschwindigkeit über Schwelle für Toe Off (Zeni-Methode 2), Ziel Standphasen-Bias < 2 Prozentpunkte, Nachweis mit `scripts/validate_core_fukuchi.py`
 - [ ] Pixel-zu-Meter-Skalierung für Schrittlänge und Geschwindigkeit (Körpergröße oder Referenzmaß), dann automatische Froude-Klasse
 - [x] Apple-Health-Export-Loader (`python -m openacl.health`, Streaming-Parser, Tages-/Wochenmediane, Perioden vor/nach OP, Plot)
-- [ ] Session-Schicht nach ADR-0009: `openacl session`, `openacl compare`, Report
+- [x] Session-Schicht nach ADR-0009: `openacl session`, `openacl compare`, Report
+- [x] Pass-Segmentierung nach ADR-0010: `openacl segment` (Langvideo → Durchgänge), 180°-Unwrap für die kamerafernen Sprunggelenkwinkel, Richtung aus `passes.yaml` → Sports2D `visible_side`, `cameras.A.distance_m` → Sports2D-Perspektivkorrektur
+- [x] OpenCap-Backend nach ADR-0011: `openacl.backends.opencap`, Clipping-Erkennung pro Kanal, Frontalebenen-Kanäle (`pelvis_list_deg`, `hip_adduction_deg`, `hip_rotation_deg`)
 
 ## Phase 2 – Interpretation und Report (Monat 2–3)
 

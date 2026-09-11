@@ -6,6 +6,11 @@ Per pass (ADR-0009):
 2. Otherwise check the video is decodable; an HEVC ``.mov`` OpenCV cannot open is transcoded
    to H.264 first (see :func:`openacl.backends.video.transcode_to_h264`).
 3. Run Sports2D, in metres when ``subject.height_m`` is known, and cache the result.
+   ``visible_side`` is resolved from ``passes.yaml`` (ADR-0010, a segmented pass has a known
+   walking direction) via ``meta.yaml`` ``cameras.A.near_side_when_walking_plus_x`` instead of
+   Sports2D's own per-frame heuristic; a pass without a ``passes.yaml`` entry still falls back
+   to ``"auto"``. ``cameras.A.distance_m`` is passed through as Sports2D's perspective-effect
+   camera-to-person distance (its own default is 10 m).
 4. Run :func:`openacl.core.pipeline.analyze` with the operated side and the norm bands.
 
 A pass that fails is recorded with its error message and the session continues; one unusable
@@ -24,7 +29,16 @@ from pathlib import Path
 from openacl.core.normband import NormBand
 from openacl.core.pipeline import GaitAnalysis, analyze
 from openacl.schema import KinematicsResult, Side
-from openacl.session.model import KINEMATICS_STEM, PassFile, Session
+from openacl.session.model import (
+    KINEMATICS_STEM,
+    PassFile,
+    Session,
+    read_pass_directions,
+    resolve_near_side_from_direction,
+)
+
+_NEAR_SIDE_TO_VISIBLE_SIDE: dict[Side, str] = {"L": "left", "R": "right"}
+"""``Session.meta``/``passes.yaml``-resolved near side -> Sports2D's ``visible_side`` (ADR-0010)."""
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +127,18 @@ def run_backend(
     pass_dir = session.pass_dir(pass_file)
     cache = session.kinematics_path(pass_file)
     if not force and cache.with_suffix(".npz").exists() and cache.with_suffix(".json").exists():
-        return KinematicsResult.load(cache), True, False, []
+        cached = KinematicsResult.load(cache)
+        warnings: list[str] = []
+        if cached.backend == "sports2d" and "angles_unwrapped_180" not in cached.meta:
+            # Cache written before the 180-deg unwrap existed: apply it on load.
+            from openacl.backends.sports2d import unwrap_angles
+
+            shifted = unwrap_angles(cached.angles_deg)
+            if shifted:
+                warnings.append(
+                    f"angles shifted by 180 deg on load (wrong visible-side flip): {shifted}"
+                )
+        return cached, True, False, warnings
 
     if pass_file.video is None:
         raise FileNotFoundError(
@@ -123,12 +148,28 @@ def run_backend(
 
     video, transcoded, warnings = _ensure_decodable(pass_file.video, pass_dir)
     height_m = session.meta.subject.height_m
+
+    visible_side = "auto"
+    direction = read_pass_directions(session.root).get(pass_file.name)
+    if direction is not None:
+        near_side = resolve_near_side_from_direction(
+            direction, session.meta.near_side_when_walking_plus_x
+        )
+        visible_side = _NEAR_SIDE_TO_VISIBLE_SIDE[near_side]
+
+    extra_config: dict | None = None
+    distance_m = session.meta.camera_distance_m("A")
+    if distance_m is not None:
+        extra_config = {"px_to_meters_conversion": {"perspective_value": distance_m}}
+
     result = run_sports2d(
         video,
         pass_dir,
         mode=mode,  # type: ignore[arg-type]
         to_meters=height_m is not None,
         person_height_m=height_m,
+        visible_side=visible_side,  # type: ignore[arg-type]
+        extra_config=extra_config,
     )
     if transcoded:
         result.meta["source_video"] = str(pass_file.video)
