@@ -4,8 +4,12 @@ Ganganalyse aus Handy-Video für die Reha nach Kreuzband-Rekonstruktion (ACLR).
 Misst Gelenkwinkel und Gangparameter, vergleicht mit Normbändern und der Gegenseite,
 zeigt den Verlauf über Wochen und erklärt Auffälligkeiten mit Quelle.
 
-**Status:** Phase 0/1. Die Kette Video → Kinematik → Gangparameter → Normvergleich läuft
-lokal auf CPU, ist aber noch nicht an echten Aufnahmen validiert. Kein nutzbares Tool für Dritte.
+**Status (2026-09-12):** Phase 0 abgeschlossen, Phase 1 weitgehend. Die Kette Langvideo →
+Segmentierung → Sports2D → Gait-Core → Normband, Symmetrie, eigener Messfehler → Report läuft
+lokal auf CPU und wurde an einer echten Session ausgewertet (42 Durchgänge, 84 Zyklen, vier
+Bedingungen, Test-Retest, OpenCap-3D als Referenz; Lehren in `docs/phase0-ergebnis.md`). Die
+Interpretationsschicht (Regeln mit Quelle und Evidenzgrad) fehlt noch. Für Dritte nutzbar mit
+Python-Kenntnissen und dem Aufnahmeprotokoll; keine App, kein Support.
 
 ## Was OpenACL ist und nicht ist
 
@@ -13,6 +17,18 @@ lokal auf CPU, ist aber noch nicht an echten Aufnahmen validiert. Kein nutzbares
 - Es stellt keine Diagnose und gibt keine Therapieempfehlung. Es ist kein Medizinprodukt.
 - Es misst Kinematik (Winkel, Zeiten, Längen). Kräfte, Gelenkmomente und Muskelaktivierung
   sieht keine Kamera. Ein unauffälliger Befund heißt nicht, dass alles in Ordnung ist.
+
+## Grenzen, die wir kennen
+
+- Eine Seitenkamera koppelt die kameranahe Seite an die Gehrichtung. Jede richtungsabhängige
+  Verzerrung sieht aus wie ein Seitenunterschied. Sprunggelenkwinkel sind damit in diesem Aufbau
+  nicht interpretierbar, Kniewinkel nur mit Vorsicht (`docs/phase0-ergebnis.md`).
+- Die Normbänder stammen aus Marker-Laborsystemen. Die 2D-Videomessung liest die Standphase des
+  Knies um einige Grad gebeugter; der Seitenvergleich ist davon frei, der Normvergleich nicht.
+- Der eigene Messfehler aus einer Wiederholung am selben Tag ist die Untergrenze; zwischen Tagen
+  ist er größer. Beide Werte stehen im Report.
+- Fünf Meter Messbereich liefern zwei Zyklen je Seite und Durchgang. Zwanzig Durchgänge sind
+  das Minimum für einen Mittelwert, dem man trauen kann.
 
 ## Aufbau
 

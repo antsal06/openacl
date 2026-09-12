@@ -12,8 +12,8 @@ Ganganalyse aus Handy-Video für ACLR-Reha. Schichten: Aufnahme → Kinematik-En
 - Jede Regel in der Interpretationsschicht trägt Quelle, Evidenzgrad und Schwellwert relativ zum Messfehler (MDC). Nichts flaggen, was unter dem MDC liegt.
 - Jede Zahl im Gait-Core hat eine Einheit im Namen oder im Typ (`knee_flexion_deg`, `stance_pct`).
 
-## Kontext zu Anton (für Interpretation und Tests)
-Vorderes Kreuzband, Semitendinosus-Gracilis-Transplantat (STG/Hamstring), OP ca. März 2026. Mehrere iPhones verfügbar. Ziel zuerst persönliche Baseline, dann Open Source.
+## Kontext zur Person
+Operierte Seite, Transplantat und OP-Datum stehen in `data/sessions/<session>/meta.yaml` (`subject`), weitere persönliche Angaben in `data/subject/context.md` (privat, gitignored). Lies beides, bevor du Ergebnisse interpretierst; nichts davon ins Repo.
 
 - Trenne Beobachtung und Schlussfolgerung. Erst was konkret im Code
   steht (mit Datei:Zeile), dann die Interpretation, sichtbar getrennt.
